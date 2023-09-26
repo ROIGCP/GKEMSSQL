@@ -8,8 +8,17 @@ metadata:
     app: "mssql"
 data:
   ACCEPT_EULA: "Y"
-  MSSQL_SA_PASSWORD: "Password123"
   MSSQL_PID: "Evaluation"
+---
+apiVersion: "v1"
+kind: "Secret"
+metadata:
+  name: "mssql-secret"
+  namespace: "default"
+  labels:
+    app: "mssql"
+data:
+  MSSQL_SA_PASSWORD: "UGFzc3dvcmQxMjM="
 ---
 apiVersion: "apps/v1"
 kind: "Deployment"
@@ -29,7 +38,7 @@ spec:
         app: "mssql"
     spec:
       containers:
-      - name: "server-1"
+      - name: "mssql-server"
         image: "mcr.microsoft.com/mssql/server:2022-latest"
         env:
         - name: "ACCEPT_EULA"
@@ -37,16 +46,16 @@ spec:
             configMapKeyRef:
               key: "ACCEPT_EULA"
               name: "mssql-configmap"
-        - name: "MSSQL_SA_PASSWORD"
-          valueFrom:
-            configMapKeyRef:
-              key: "MSSQL_SA_PASSWORD"
-              name: "mssql-configmap"
         - name: "MSSQL_PID"
           valueFrom:
             configMapKeyRef:
               key: "MSSQL_PID"
               name: "mssql-configmap"
+        - name: "MSSQL_SA_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "MSSQL_SA_PASSWORD"
+              name: "mssql-secret"
 ---
 apiVersion: "v1"
 kind: "Service"
