@@ -1,2 +1,1 @@
-# GKEMSSQL
-MSSQL on GKE
+# Microsoft SQL Server on Google Kubernetes Engine
