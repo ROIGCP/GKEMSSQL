@@ -1,0 +1,98 @@
+---
+apiVersion: "v1"
+kind: "ConfigMap"
+metadata:
+  name: "mssql-configmap"
+  namespace: "default"
+  labels:
+    app: "mssql"
+data:
+  ACCEPT_EULA: "Y"
+  MSSQL_PID: "Evaluation"
+---
+apiVersion: "v1"
+kind: "Secret"
+metadata:
+  name: "mssql-secret"
+  namespace: "default"
+  labels:
+    app: "mssql"
+data:
+  # Password is base64 encoded Password123
+  MSSQL_SA_PASSWORD: "UGFzc3dvcmQxMjM="
+---
+apiVersion: "apps/v1"
+kind: "StatefulSet"
+metadata:
+  name: "mssql"
+  namespace: "default"
+  labels:
+    app: "mssql"
+spec:
+  serviceName: "mssql-service"
+  replicas: 3
+  minReadySeconds: 0
+  selector:
+    matchLabels:
+      app: "mssql"
+  template:
+    metadata:
+      labels:
+        app: "mssql"
+    spec:
+      # first time you run it - uncomment two line below
+      # exec into pod and run chown -R mssql /var/opt/mssql 
+      # then comment lines back out and re-apply
+      securityContext:
+        runAsUser: 0
+      containers:
+      - name: "mssql-server"
+        image: "mcr.microsoft.com/mssql/server:2022-latest"
+        ports:
+        - containerPort: 1433
+          name: mssql
+        volumeMounts:
+        - mountPath: "/var/opt/mssql"
+          name: mssql-storage
+        env:
+        - name: "ACCEPT_EULA"
+          valueFrom:
+            configMapKeyRef:
+              key: "ACCEPT_EULA"
+              name: "mssql-configmap"
+        - name: "MSSQL_PID"
+          valueFrom:
+            configMapKeyRef:
+              key: "MSSQL_PID"
+              name: "mssql-configmap"
+        - name: "MSSQL_SA_PASSWORD"
+          valueFrom:
+            secretKeyRef:
+              key: "MSSQL_SA_PASSWORD"
+              name: "mssql-secret"
+  volumeClaimTemplates:
+  - metadata:
+      name: mssql-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "regionalpd-storageclass"
+      resources:
+        requests:
+          storage: 25Gi
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  name: "mssql-service"
+  namespace: "default"
+  labels:
+    app: "mssql"
+spec:
+  ports:
+  - protocol: "TCP"
+    port: 1433
+    targetPort: 1433
+  selector:
+    app: "mssql"
+  type: "LoadBalancer"
+  loadBalancerIP: ""
